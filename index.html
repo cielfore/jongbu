@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="종부세">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#EEF1F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10151B" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<title>종부세 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F0; --surface:#FFFFFF; --ink:#17212B; --muted:#5B6771; --rule:#D3D9D8;
+  --blue:#1D4470; --blue-soft:#E3EAF2; --stamp:#B3372C; --warn:#8A5A00; --warn-soft:#FBF1DC;
+  --font:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#10151B; --surface:#182029; --ink:#E4E9EE; --muted:#93A0AB; --rule:#2B3642;
+  --blue:#8DB0DA; --blue-soft:#1F2C3B; --stamp:#E06A5E; --warn:#E7B45A; --warn-soft:#2E2718; }}
+:root[data-theme="dark"]{
+  --bg:#10151B; --surface:#182029; --ink:#E4E9EE; --muted:#93A0AB; --rule:#2B3642;
+  --blue:#8DB0DA; --blue-soft:#1F2C3B; --stamp:#E06A5E; --warn:#E7B45A; --warn-soft:#2E2718; }
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.55;
+  -webkit-text-size-adjust:100%;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 96px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 20px;margin-bottom:18px}
+header.top h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-0.02em}
+header.top p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--blue);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 14px;cursor:pointer;font-weight:500;color:var(--blue);min-height:40px}
+.seg button+button{border-left:1px solid var(--blue)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:var(--surface)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media (min-width:960px){.grid{grid-template-columns:minmax(0,1fr) 440px}.ledger-col{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);align-self:start;max-height:calc(100vh - 24px);overflow:auto}}
+section.panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px;margin-bottom:14px}
+section.panel>h2{margin:0;font-size:16px;font-weight:700;padding:14px 16px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:8px}
+section.panel>h2 small{font-weight:400;color:var(--muted);font-size:12px}
+details.panel>summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::after{content:"펼치기";font-weight:400;font-size:12px;color:var(--muted)}
+details.panel[open]>summary::after{content:"접기"}
+details.panel[open]>summary{border-bottom:1px solid var(--rule)}
+details.panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px;margin-bottom:14px}
+.body{padding:14px 16px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 14px}
+.f label,.f .lab{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.f input[type=text],.f input[type=date],.f input[type=number],.f select{width:100%;min-height:40px;padding:7px 10px;border:1px solid var(--rule);border-radius:7px;background:var(--surface);-webkit-appearance:none;appearance:none}
+.f select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:28px}
+.f input:focus,.f select:focus,button:focus-visible,summary:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.f .hint{font-size:12px;color:var(--muted);margin-top:3px;min-height:1em}
+.num{text-align:right}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;min-height:32px}
+.chk input{width:18px;height:18px;accent-color:var(--blue)}
+.house{border:1px solid var(--rule);border-radius:9px;padding:12px;margin-bottom:12px}
+.house-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.house-head input{font-weight:700;border:0;border-bottom:1px dashed var(--rule);background:none;padding:4px 0;min-width:0;flex:1}
+.house .sub{margin-top:12px;padding-top:12px;border-top:1px dashed var(--rule)}
+.house .sub>.lab{font-size:13px;font-weight:500;margin-bottom:8px;display:block}
+.propcalc{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+.btn{border:1px solid var(--blue);background:var(--surface);color:var(--blue);border-radius:7px;padding:8px 14px;cursor:pointer;font-weight:500;min-height:40px}
+.btn.primary{background:var(--blue);color:var(--surface)}
+.btn.ghost{border-color:var(--rule);color:var(--muted)}
+.btn.small{padding:4px 10px;min-height:32px;font-size:13px}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px}
+.flag{display:inline-block;font-size:11px;font-weight:500;color:var(--warn);background:var(--warn-soft);border-radius:4px;padding:0 5px;margin-left:4px;vertical-align:1px}
+.note{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+table{border-collapse:collapse;width:100%}
+.tbl-wrap{overflow-x:auto}
+.tbl th,.tbl td{padding:7px 8px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap;font-size:13.5px}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl th{font-weight:500;color:var(--muted);font-size:12.5px}
+.tbl input{width:110px;min-height:34px;padding:4px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--surface);text-align:right}
+
+/* 고지서 */
+.bill{background:var(--surface);border:1px solid var(--rule);border-top:4px double var(--blue);border-radius:4px 4px 10px 10px}
+.bill-head{padding:16px 18px 12px;border-bottom:1px solid var(--rule)}
+.bill-head .t{font-size:13px;color:var(--muted)}
+.bill-head .y{font-size:19px;font-weight:700;margin-top:2px}
+.due{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px;border-bottom:1px solid var(--rule)}
+.due .lab{font-size:14px;font-weight:500}
+.due .lab small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.due .amt{font-size:30px;font-weight:700;letter-spacing:-0.02em;color:var(--stamp);border:2px solid var(--stamp);border-radius:6px;padding:2px 12px;line-height:1.3}
+.due .amt span{font-size:15px;font-weight:500;margin-left:2px}
+.kv{padding:6px 18px 12px}
+.kv div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:14px;border-bottom:1px dotted var(--rule)}
+.kv div:last-child{border-bottom:0}
+.kv dt,.kv .k{color:var(--muted)}
+.compare{margin:0 18px 14px;padding:10px 12px;background:var(--blue-soft);border-radius:7px;font-size:13.5px}
+.person{border-top:1px solid var(--rule);padding:14px 18px}
+.person h3{margin:0 0 2px;font-size:15px}
+.person .cat{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+ol.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:22px 1fr auto;gap:0 8px;padding:7px 0;border-bottom:1px dotted var(--rule)}
+ol.steps li::before{content:counter(s);width:20px;height:20px;border:1px solid var(--blue);color:var(--blue);border-radius:50%;font-size:11.5px;display:grid;place-items:center;margin-top:1px}
+ol.steps .lbl{font-size:14px}
+ol.steps .val{font-size:14px;font-weight:500;text-align:right}
+ol.steps .why{grid-column:2 / 4;font-size:12px;color:var(--muted);line-height:1.5;word-break:keep-all}
+ol.steps li.final{border-bottom:0}
+ol.steps li.final .lbl,ol.steps li.final .val{font-weight:700}
+.bill-foot{padding:12px 18px 16px;border-top:1px solid var(--rule)}
+.years{padding:12px 18px;border-top:1px solid var(--rule)}
+.years h4,.bill-foot h4{margin:0 0 6px;font-size:13.5px}
+.warnlist{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted)}
+.warnlist li{margin:3px 0}
+
+.dock{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--rule);padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:10px;z-index:5}
+.dock b{color:var(--stamp);font-size:18px}
+@media (min-width:960px){.dock{display:none}.wrap{padding-bottom:40px}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>종부세 계산기</h1>
+      <p>주택분 종합부동산세 · 2026 세제개편안(정부안) 반영 · 입력값은 이 기기에만 저장돼요</p>
+    </div>
+    <div class="seg" role="group" aria-label="과세연도" id="yearSeg"></div>
+  </header>
+  <div class="grid">
+    <div id="form"></div>
+    <div class="ledger-col" id="ledger"></div>
+  </div>
+</div>
+<div class="dock"><span>납부할 세액</span><span><b id="dockAmt">-</b></span><button class="btn small" onclick="document.getElementById('ledger').scrollIntoView({behavior:'smooth'})">명세 보기</button></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importFile" accept="application/json" hidden>
+<script>
+// ── 종부세 계산 엔진 (원 단위) ──
+(function (root) {
+  const EOK = 1e8, MAN = 1e4;
+  const J_BR = [3, 6, 12, 25, 50, 94, Infinity].map(x => x * EOK);
+  const P_BR = [0.6, 1.5, 3, Infinity].map(x => x * EOK);
+  const P_STD = [0.001, 0.0015, 0.0025, 0.004];
+  const P_1H = [0.0005, 0.001, 0.002, 0.0035]; // 1세대1주택 특례세율(공시 9억 이하)
+
+  function progressive(base, brackets, rates) {
+    if (!(base > 0)) return 0;
+    let tax = 0, prev = 0;
+    for (let i = 0; i < brackets.length; i++) {
+      if (base <= prev) break;
+      tax += (Math.min(base, brackets[i]) - prev) * rates[i];
+      prev = brackets[i];
+    }
+    return tax;
+  }
+
+  const YEARS = [2026, 2027, 2028];
+  function defaultParams(year) {
+    const common = {
+      ageRates: [0.2, 0.3, 0.4], holdRates: [0.2, 0.4, 0.5], residRates: [0.2, 0.4, 0.5],
+      holdRatesAlt: [0.1, 0.2, 0.25], creditTotalCap: 0.8, creditAmtScope: 'total',
+      nongteuk: 0.2, propFmv1h: [0.43, 0.44, 0.45], propFmvOther: 0.6, corpCap: false,
+    };
+    if (year <= 2026) return Object.assign({}, common, {
+      label: '2026 현행법',
+      ded1hRes: 12 * EOK, ded1hNon: 12 * EOK, dedOtherFix: 9 * EOK, dedOtherVar: 0,
+      thr1h: 0, thrOther: 0, fmvBase: 0.6, fmvHeavy: 0.6,
+      rates12: [0.005, 0.007, 0.010, 0.013, 0.015, 0.020, 0.027],
+      rates3: [0.005, 0.007, 0.010, 0.020, 0.030, 0.040, 0.050],
+      corp12: 0.027, corp3: 0.05, capRate: 1.5,
+      creditMode: 'hold', creditAmtCap: 0,
+    });
+    if (year === 2027) return Object.assign({}, common, {
+      label: '2027 개편안(중간)',
+      ded1hRes: 14 * EOK, ded1hNon: 9 * EOK, dedOtherFix: 4 * EOK, dedOtherVar: 5 * EOK,
+      thr1h: 14 * EOK, thrOther: 9 * EOK, fmvBase: 0.7, fmvHeavy: 0.7,
+      rates12: [0.005, 0.007, 0.013, 0.015, 0.020, 0.027, 0.035],
+      rates3: [0.005, 0.007, 0.013, 0.020, 0.030, 0.040, 0.050],
+      corp12: 0.027, corp3: 0.05, capRate: 2.0,
+      creditMode: 'max', creditAmtCap: 800 * MAN,
+    });
+    return Object.assign({}, common, {
+      label: '2028~ 개편안(최종)',
+      ded1hRes: 14 * EOK, ded1hNon: 9 * EOK, dedOtherFix: 4 * EOK, dedOtherVar: 5 * EOK,
+      thr1h: 14 * EOK, thrOther: 9 * EOK, fmvBase: 0.7, fmvHeavy: 0.8,
+      rates12: [0.005, 0.007, 0.013, 0.020, 0.030, 0.040, 0.050],
+      rates3: [0.005, 0.007, 0.013, 0.020, 0.030, 0.040, 0.050],
+      corp12: 0.05, corp3: 0.05, capRate: 2.0,
+      creditMode: 'resid', creditAmtCap: 600 * MAN,
+    });
+  }
+
+  function bracketIdx(years) { return years >= 15 ? 2 : years >= 10 ? 1 : years >= 5 ? 0 : -1; }
+  function ageIdx(age) { return age >= 70 ? 2 : age >= 65 ? 1 : age >= 60 ? 0 : -1; }
+
+  function fullYears(fromISO, year) {
+    if (!fromISO) return null;
+    const d = new Date(fromISO + 'T00:00:00');
+    if (isNaN(d)) return null;
+    const ref = new Date(year, 5, 1); // 6.1.
+    let y = ref.getFullYear() - d.getFullYear();
+    const m = ref.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && ref.getDate() < d.getDate())) y--;
+    return Math.max(y, 0);
+  }
+
+  // 재산세 1주택 FMV (공시가 구간)
+  function propFmvFor(gongsi, is1hHouse, P) {
+    if (!is1hHouse) return P.propFmvOther;
+    if (gongsi <= 3 * EOK) return P.propFmv1h[0];
+    if (gongsi <= 6 * EOK) return P.propFmv1h[1];
+    return P.propFmv1h[2];
+  }
+
+  // 주택별 재산세 정리 (세대 전체 금액)
+  function houseProperty(h, is1hHouse, P, urban) {
+    const fmv = propFmvFor(h.gongsi, is1hHouse, P);
+    const baseStd = h.gongsi * fmv;
+    const special = is1hHouse && h.gongsi <= 9 * EOK;
+    const tFn = b => progressive(b, P_BR, special ? P_1H : P_STD);
+    const totFn = b => tFn(b) * 1.2 + (urban ? b * 0.0014 : 0);
+    let main, base, urb, edu, source;
+    if (h.propMode === 'split' && h.propMain > 0) {
+      main = h.propMain; urb = h.propUrban || 0; edu = h.propEdu || 0;
+      base = h.propBase > 0 ? h.propBase : baseStd; source = '세목별 입력';
+    } else if (h.propMode === 'total' && h.propTotal > 0) {
+      if (h.propBase > 0) {
+        base = h.propBase;
+        const u = urban ? base * 0.0014 : 0;
+        main = (h.propTotal - u) / 1.2;
+      } else {
+        let lo = 0, hi = Math.max(baseStd * 3, 1e9);
+        for (let i = 0; i < 100; i++) { const mid = (lo + hi) / 2; if (totFn(mid) < h.propTotal) lo = mid; else hi = mid; }
+        base = (lo + hi) / 2; main = tFn(base);
+      }
+      urb = urban ? base * 0.0014 : 0; edu = h.propTotal - main - urb;
+      source = h.propBase > 0 ? '총액·과표로 역산' : '총액에서 역산(추정)';
+    } else {
+      base = baseStd; main = tFn(base); urb = urban ? base * 0.0014 : 0; edu = main * 0.2;
+      source = '미입력 — 표준 산식 추정';
+    }
+    return { fmv, baseStd, base, main, urban: urb, edu, total: main + urb + edu, source,
+             stdOnGongsi: progressive(baseStd, P_BR, P_STD), stdOnBase: progressive(base, P_BR, P_STD) };
+  }
+
+  // taxpayer: {key, name, birth, shares:[per house 0..1], election:bool, prior:{prop,comp}|null}
+  function calcPerson(tp, ctx) {
+    const { houses, hp, P, year, corp, household1h, denomBasis, applyCap } = ctx;
+    const steps = [];
+    let sumG = 0, residG = 0, count = 0, anyAdj = false, propPaid = 0, denom = 0, target1h = null;
+    houses.forEach((h, i) => {
+      const s = tp.shares[i] || 0;
+      if (s <= 0 || h.excludeSum) return;
+      sumG += h.gongsi * s;
+      if (h.resid) residG += h.gongsi * s;
+      if (!h.excludeCount) { count++; if (h.adjusted) anyAdj = true; target1h = h; }
+      propPaid += hp[i].main * s;
+      denom += (denomBasis === 'base' ? hp[i].stdOnBase : hp[i].stdOnGongsi) * s;
+    });
+    const is1h = !corp && household1h && (tp.election || (target1h && tp.shares[houses.indexOf(target1h)] >= 0.9999));
+    const out = { key: tp.key, name: tp.name, sumG, count, is1h, propPaid, steps };
+    const residRatio = sumG > 0 ? residG / sumG : 0;
+    const house1 = is1h ? target1h : null;
+
+    // ① 과세대상 판정
+    const thr = corp ? 0 : (is1h ? P.thr1h : P.thrOther);
+    out.category = corp ? '법인' : is1h ? (tp.election ? '1세대1주택(공동명의 특례)' : '1세대1주택') : (count >= 3 ? `다주택(${count}주택)` : count === 2 ? '2주택' : '그 외(공동명의 등)');
+    if (sumG <= 0) { out.comp = 0; out.reason = '과세 대상 주택 없음'; return finish(out, P); }
+    if (thr > 0 && sumG <= thr) {
+      steps.push({ k: 'thr', label: '과세대상 판정', value: sumG, note: `공시가격 합계 ${fmtE(sumG)} ≤ 기준 ${fmtE(thr)} → 과세 제외` });
+      out.comp = 0; out.reason = '과세기준 이하'; return finish(out, P);
+    }
+    steps.push({ k: 'sum', label: '공시가격 합계(지분 반영)', value: sumG, note: `주택 수 ${count}채 · ${out.category}` + (thr > 0 ? ` · 과세기준 ${fmtE(thr)} 초과` : '') });
+
+    // ② 공제
+    let ded, dedNote;
+    if (corp) { ded = 0; dedNote = '법인: 기본공제 없음'; }
+    else if (is1h) { const r = house1 && house1.resid; ded = r ? P.ded1hRes : P.ded1hNon; dedNote = `1세대1주택 ${r ? '거주' : '비거주'}`; }
+    else { ded = P.dedOtherFix + P.dedOtherVar * residRatio; dedNote = P.dedOtherVar > 0 ? `${fmtE(P.dedOtherFix)} + ${fmtE(P.dedOtherVar)} × 거주주택 비중 ${(residRatio * 100).toFixed(1)}%` : '그 외'; }
+    steps.push({ k: 'ded', label: '기본공제', value: -ded, note: dedNote });
+
+    // ③ 과세표준
+    const heavy = !is1h && (count >= 3 || (count >= 2 && anyAdj));
+    const fmv = heavy ? P.fmvHeavy : P.fmvBase;
+    const base = Math.max(sumG - ded, 0) * fmv;
+    steps.push({ k: 'base', label: '과세표준', value: base, note: `(${fmtE(sumG)} − ${fmtE(ded)}) × 공정시장가액비율 ${(fmv * 100).toFixed(0)}%` + (heavy && P.fmvHeavy !== P.fmvBase ? ' (3주택+·조정지역 다주택)' : '') });
+
+    // ④ 산출세액
+    let calc, rateNote;
+    if (corp) { const r = count >= 3 ? P.corp3 : P.corp12; calc = base * r; rateNote = `법인 단일세율 ${(r * 100).toFixed(1)}%`; }
+    else { const rates = count >= 3 ? P.rates3 : P.rates12; calc = progressive(base, J_BR, rates); rateNote = (count >= 3 && P.rates3.join() !== P.rates12.join() ? '3주택 이상 세율표' : '일반 세율표') + ` · 최고구간 ${(rates[topIdx(base)] * 100).toFixed(1)}%`; }
+    steps.push({ k: 'calc', label: '산출세액', value: calc, note: rateNote });
+
+    // ⑤ 재산세 공제
+    const pf = is1h && house1 ? propFmvFor(house1.gongsi, true, P) : (household1h && target1h ? propFmvFor(target1h.gongsi, true, P) : P.propFmvOther);
+    const numer = base * pf * 0.004;
+    let pDed = denom > 0 ? propPaid * numer / denom : 0;
+    pDed = Math.min(pDed, propPaid, calc);
+    steps.push({ k: 'pded', label: '재산세 중복분 공제', value: -pDed, note: `재산세 본세 ${fmtM(propPaid)} × (과표 × ${(pf * 100).toFixed(0)}% × 0.4% = ${fmtM(numer)}) ÷ 표준세율 재산세 ${fmtM(denom)}` });
+    const afterP = Math.max(calc - pDed, 0);
+
+    // ⑥ 1세대1주택 세액공제
+    let credit = 0;
+    if (is1h) {
+      const age = fullYears(tp.birth, year);
+      const ai = age == null ? -1 : ageIdx(age);
+      const aRate = ai >= 0 ? P.ageRates[ai] : 0;
+      const holdY = house1 ? fullYears(house1.acq, year) : null;
+      const resY = house1 && house1.residYears != null && house1.residYears !== '' ? Math.floor(+house1.residYears) : null;
+      const hR = holdY == null ? 0 : (bracketIdx(holdY) >= 0 ? P.holdRates[bracketIdx(holdY)] : 0);
+      const hRalt = holdY == null ? 0 : (bracketIdx(holdY) >= 0 ? P.holdRatesAlt[bracketIdx(holdY)] : 0);
+      const rR = resY == null ? 0 : (bracketIdx(resY) >= 0 ? P.residRates[bracketIdx(resY)] : 0);
+      let pRate, pNote;
+      if (P.creditMode === 'hold') { pRate = hR; pNote = `보유 ${holdY ?? '?'}년 ${(hR * 100).toFixed(0)}%`; }
+      else if (P.creditMode === 'max') { pRate = Math.max(rR, hRalt); pNote = `거주 ${resY ?? '?'}년 ${(rR * 100).toFixed(0)}% / 보유 ${holdY ?? '?'}년 ${(hRalt * 100).toFixed(0)}% 중 큰 값`; }
+      else { pRate = rR; pNote = `거주 ${resY ?? '?'}년 ${(rR * 100).toFixed(0)}%`; }
+      const combined = Math.min(aRate + pRate, P.creditTotalCap);
+      let amt = afterP * combined, capNote = '';
+      if (P.creditAmtCap > 0) {
+        if (P.creditAmtScope === 'total') { if (amt > P.creditAmtCap) { amt = P.creditAmtCap; capNote = ` · 한도 ${fmtM(P.creditAmtCap)} 적용`; } }
+        else {
+          const ageAmt = afterP * aRate; let pAmt = Math.min(afterP * combined - ageAmt, afterP * pRate);
+          if (pAmt > P.creditAmtCap) { pAmt = P.creditAmtCap; capNote = ` · 거주·보유분 한도 ${fmtM(P.creditAmtCap)} 적용`; }
+          amt = Math.min(ageAmt + pAmt, afterP * P.creditTotalCap);
+        }
+      }
+      credit = amt;
+      steps.push({ k: 'credit', label: '1세대1주택 세액공제', value: -credit, note: `연령 ${age ?? '미입력'}세 ${(aRate * 100).toFixed(0)}% + ${pNote} = ${(combined * 100).toFixed(0)}%${capNote}` });
+      out.creditDetail = { age, aRate, holdY, resY, pRate, combined };
+    }
+    const beforeCap = Math.max(afterP - credit, 0);
+
+    // ⑦ 세부담상한
+    let comp = beforeCap;
+    const capOn = applyCap && (!corp || P.corpCap);
+    if (capOn && tp.prior && (tp.prior.prop > 0 || tp.prior.comp > 0)) {
+      const priorTot = (tp.prior.prop || 0) + (tp.prior.comp || 0);
+      const limit = priorTot * P.capRate;
+      const cur = propPaid + beforeCap;
+      const excess = Math.max(cur - limit, 0);
+      comp = Math.max(beforeCap - excess, 0);
+      steps.push({ k: 'cap', label: '세부담상한 초과액', value: -(beforeCap - comp), note: `당해 ${fmtM(cur)} vs 전년 ${fmtM(priorTot)} × ${(P.capRate * 100).toFixed(0)}% = ${fmtM(limit)}` + (excess > 0 ? '' : ' → 상한 미달') });
+      out.capApplied = excess > 0;
+    } else {
+      steps.push({ k: 'cap', label: '세부담상한', value: 0, note: !capOn ? '적용 안 함' : '전년도 세액 없음 → 미적용' });
+    }
+    out.beforeCap = beforeCap; out.comp = Math.floor(comp);
+    return finish(out, P);
+  }
+
+  function finish(out, P) {
+    out.comp = Math.floor(out.comp || 0);
+    out.nong = Math.floor(out.comp * P.nongteuk);
+    out.total = out.comp + out.nong;
+    out.installment = out.comp > 500 * MAN ? Math.floor(out.comp / 2) : out.comp > 250 * MAN ? out.comp - 250 * MAN : 0;
+    return out;
+  }
+  function topIdx(base) { for (let i = 0; i < J_BR.length; i++) if (base <= J_BR[i]) return i; return J_BR.length - 1; }
+
+  function fmtE(v) { return (v / EOK).toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '억'; }
+  function fmtM(v) { return Math.round(v / MAN).toLocaleString('ko-KR') + '만'; }
+
+  // state → 결과
+  function compute(state, yearOverride, opts) {
+    opts = opts || {};
+    const year = yearOverride || state.year;
+    const P = Object.assign(defaultParams(year), (state.overrides || {})[year] || {});
+    const corp = state.taxpayer === 'corp';
+    const houses = state.houses.map(h => Object.assign({}, h, { gongsi: +h.gongsi || 0 }));
+    const counted = houses.filter(h => !h.excludeSum && !h.excludeCount && h.gongsi > 0);
+    const household1h = !corp && counted.length === 1;
+    const hp = houses.map(h => houseProperty(h, household1h && counted[0] === h, P, state.urban !== false));
+    const persons = corp ? [{ key: 'p0', name: '법인' }] : state.spouse ? [{ key: 'p0', name: state.names?.[0] || '본인' }, { key: 'p1', name: state.names?.[1] || '배우자' }] : [{ key: 'p0', name: state.names?.[0] || '본인' }];
+    const shareOf = (h, k) => corp || !state.spouse ? 1 : k === 'p0' ? (+h.share0 || 0) / 100 : 1 - (+h.share0 || 0) / 100;
+    const rec = (state.records || {})[year - 1] || {};
+    const applyCap = opts.noCap ? false : state.applyCap !== false;
+    const ctx = { houses, hp, P, year, corp, household1h, denomBasis: state.denomBasis || 'gongsi', applyCap };
+
+    const jointEligible = !corp && state.spouse && household1h && (() => { const s = +counted[0].share0; return s > 0 && s < 100; })();
+    const runElection = (election) => {
+      if (election) {
+        const hk = state.electionHolder || 'p0';
+        const idx = hk === 'p0' ? 0 : 1;
+        const prior = sumPrior(rec, persons);
+        return [calcPerson({ key: hk, name: persons[idx].name + ' (특례 납세의무자)', birth: (state.births || [])[idx], shares: houses.map(() => 1), election: true, prior }, ctx)];
+      }
+      return persons.map((p, i) => calcPerson({ key: p.key, name: p.name, birth: (state.births || [])[i], shares: houses.map(h => shareOf(h, p.key)), election: false, prior: rec[p.key] || null }, ctx));
+    };
+    const useElection = jointEligible && !!state.election;
+    const people = runElection(useElection);
+    const sum = arr => arr.reduce((a, b) => a + b, 0);
+    const res = {
+      year, P, household1h, jointEligible, useElection, hp, people,
+      comp: sum(people.map(p => p.comp)), nong: sum(people.map(p => p.nong)),
+      propTotal: sum(hp.map((x, i) => houses[i].excludeSum ? 0 : x.total)),
+    };
+    res.total = res.comp + res.nong;
+    if (jointEligible && !opts.noAlt) {
+      const alt = runElection(!useElection);
+      res.alt = { election: !useElection, total: sum(alt.map(p => p.total)), comp: sum(alt.map(p => p.comp)) };
+    }
+    return res;
+  }
+  function sumPrior(rec, persons) {
+    let prop = 0, comp = 0, any = false;
+    persons.forEach(p => { if (rec[p.key]) { any = true; prop += +rec[p.key].prop || 0; comp += +rec[p.key].comp || 0; } });
+    return any ? { prop, comp } : null;
+  }
+
+  const api = { compute, defaultParams, progressive, houseProperty, YEARS, EOK, MAN, fullYears };
+  if (typeof module !== 'undefined') module.exports = api; else root.JB = api;
+})(this);
+
+</script>
+<script>
+(function(){
+const {EOK, MAN} = JB;
+const KEY = 'jongbu-calc-v1';
+const $ = s => document.querySelector(s);
+let uid = 1;
+const newHouse = n => ({id: 'h' + (uid++), name: '주택 ' + n, gongsi: 15 * EOK, share0: 50, adjusted: false, resid: true,
+  acq: '2016-06-01', residYears: 10, excludeCount: false, excludeSum: false,
+  propMode: 'auto', propTotal: 0, propMain: 0, propUrban: 0, propEdu: 0, propBase: 0});
+const defaults = () => ({year: 2026, taxpayer: 'indiv', spouse: true, election: false, electionHolder: 'p0',
+  names: ['본인', '배우자'], births: ['', ''], houses: [newHouse(1)], urban: true, applyCap: true,
+  denomBasis: 'gongsi', overrides: {}, records: {}});
+let S;
+function load(){
+  try { const raw = localStorage.getItem(KEY); if (raw) { S = Object.assign(defaults(), JSON.parse(raw)); } } catch (e) {}
+  if (!S) S = defaults();
+  S.houses.forEach(h => { const n = parseInt(String(h.id).slice(1)); if (n >= uid) uid = n + 1; });
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+// ── 포맷 ──
+const won = v => Math.round(v).toLocaleString('ko-KR');
+const man = v => (v / MAN).toLocaleString('ko-KR', {maximumFractionDigits: 1});
+const eok = v => (v / EOK).toLocaleString('ko-KR', {maximumFractionDigits: 4});
+function korean(v){
+  v = Math.round(+v || 0); if (!v) return '';
+  const e = Math.floor(v / EOK), m = Math.floor((v % EOK) / MAN), r = v % MAN;
+  return [e ? e + '억' : '', m ? m.toLocaleString('ko-KR') + '만' : '', r ? r.toLocaleString('ko-KR') : ''].filter(Boolean).join(' ') + '원';
+}
+const parseNum = s => { const t = String(s).replace(/[^0-9.\-]/g, ''); return t === '' ? 0 : +t; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1800); }
+
+// ── 필드 헬퍼 (data-k = 상태 경로) ──
+function money(path, label, val, hint){
+  return `<div class="f"><label for="${path}">${label}</label><input type="text" inputmode="numeric" class="num" id="${path}" data-k="${path}" data-t="money" value="${val ? won(val) : ''}" placeholder="0"><div class="hint" data-hint="${path}">${korean(val)}</div>${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+}
+function numf(path, label, val, step, hint){
+  return `<div class="f"><label for="${path}">${label}</label><input type="number" inputmode="decimal" class="num" id="${path}" data-k="${path}" data-t="num" value="${val ?? ''}" step="${step || 'any'}">${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+}
+function datef(path, label, val, hint){
+  return `<div class="f"><label for="${path}">${label}</label><input type="date" id="${path}" data-k="${path}" data-t="str" value="${esc(val)}">${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+}
+function sel(path, label, val, opts, hint){
+  return `<div class="f"><label for="${path}">${label}</label><select id="${path}" data-k="${path}" data-t="str" data-re="1">${opts.map(([v, t]) => `<option value="${v}" ${String(v) === String(val) ? 'selected' : ''}>${t}</option>`).join('')}</select>${hint ? `<div class="hint">${hint}</div>` : ''}</div>`;
+}
+function chk(path, label, val, re){
+  return `<label class="chk"><input type="checkbox" data-k="${path}" data-t="bool" ${re ? 'data-re="1"' : ''} ${val ? 'checked' : ''}>${label}</label>`;
+}
+function getPath(o, p){ return p.split('.').reduce((a, k) => a == null ? a : a[k], o); }
+function setPath(o, p, v){ const ks = p.split('.'); let a = o; ks.slice(0, -1).forEach((k, i) => { if (a[k] == null) a[k] = /^\d+$/.test(ks[i + 1]) ? [] : {}; a = a[k]; }); a[ks[ks.length - 1]] = v; }
+
+// ── 입력 패널 ──
+function renderYearSeg(){
+  $('#yearSeg').innerHTML = JB.YEARS.map(y => `<button type="button" data-year="${y}" aria-pressed="${S.year === y}">${y === 2028 ? '2028~' : y}</button>`).join('');
+}
+function renderForm(){
+  const corp = S.taxpayer === 'corp';
+  const P = currentParams();
+  let h = '';
+  // 1. 납세자
+  h += `<section class="panel"><h2>납세자</h2><div class="body"><div class="fields">
+    ${sel('taxpayer', '구분', S.taxpayer, [['indiv', '개인(세대)'], ['corp', '법인']])}
+    ${corp ? '' : sel('spouse', '명의 구성', S.spouse ? '1' : '0', [['0', '본인만'], ['1', '본인 + 배우자']])}
+    ${corp ? '' : `<div class="f"><label for="births.0">${esc(S.names[0])} 생년월일</label><input type="date" id="births.0" data-k="births.0" data-t="str" value="${esc(S.births[0])}"><div class="hint">과세기준일(6.1.) 기준 만 나이로 고령자공제 산정</div></div>`}
+    ${!corp && S.spouse ? `<div class="f"><label for="births.1">${esc(S.names[1])} 생년월일</label><input type="date" id="births.1" data-k="births.1" data-t="str" value="${esc(S.births[1])}"></div>` : ''}
+  </div>`;
+  const R = JB.compute(S, null, {noAlt: true});
+  if (R.jointEligible) {
+    h += `<div class="sub" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--rule)">
+      <div class="checks" style="margin-top:0">${chk('election', '부부 공동명의 1주택 특례 신청', S.election, true)}</div>
+      ${S.election ? `<div class="fields" style="margin-top:8px">${sel('electionHolder', '특례 납세의무자', S.electionHolder, [['p0', S.names[0]], ['p1', S.names[1]]], '원칙은 지분이 큰 사람, 같으면 선택')}</div>` : ''}
+      <p class="note">신청하면 한 사람이 주택 전체를 가진 1세대1주택자로 계산하고 고령자·보유(거주)공제를 받아요. 결과 명세에 신청·미신청 비교가 함께 나와요.</p></div>`;
+  }
+  h += `</div></section>`;
+
+  // 2. 주택
+  h += `<section class="panel"><h2>보유 주택 <small>과세기준일 6.1. 현재</small></h2><div class="body">`;
+  S.houses.forEach((x, i) => {
+    const p = `houses.${i}`;
+    const hp = R.hp[i];
+    const shareHint = S.spouse && !corp ? `${esc(S.names[1])} ${100 - (+x.share0 || 0)}%` : '';
+    h += `<div class="house">
+      <div class="house-head"><input aria-label="주택 이름" data-k="${p}.name" data-t="str" value="${esc(x.name)}">
+      ${S.houses.length > 1 ? `<button type="button" class="btn ghost small" data-act="delHouse" data-i="${i}">삭제</button>` : ''}</div>
+      <div class="fields">
+        ${money(p + '.gongsi', '공시가격(원)', x.gongsi)}
+        ${S.spouse && !corp ? numf(p + '.share0', `${esc(S.names[0])} 지분(%)`, x.share0, 1, `<span id="${p}.share0.sh">${shareHint}</span>`) : ''}
+        ${corp ? '' : datef(p + '.acq', '취득일(보유기간 기산일)', x.acq, '현행 보유공제·개편안 보유공제용')}
+        ${corp ? '' : numf(p + '.residYears', '거주기간(년)', x.residYears, 0.5, '부득이 사유·공사기간 1/2 인정분 포함해 입력')}
+      </div>
+      <div class="checks">
+        ${chk(p + '.resid', '거주주택', x.resid)}
+        ${chk(p + '.adjusted', '조정대상지역', x.adjusted)}
+        ${chk(p + '.excludeCount', '주택 수 제외(일시적 2주택·상속 등)', x.excludeCount, true)}
+        ${chk(p + '.excludeSum', '합산배제(등록임대 등)', x.excludeSum, true)}
+      </div>
+      <div class="sub"><span class="lab">이 주택 재산세 (소유자 전원 합계, 7월+9월)</span>
+        <div class="fields">
+          ${sel(p + '.propMode', '입력 방식', x.propMode, [['auto', '입력 안 함(추정)'], ['total', '고지서 총액'], ['split', '세목별']])}
+          ${x.propMode === 'total' ? money(p + '.propTotal', '재산세 총액(원)', x.propTotal, '본세+도시지역분+지방교육세') : ''}
+          ${x.propMode === 'split' ? money(p + '.propMain', '재산세 본세(원)', x.propMain) + money(p + '.propUrban', '도시지역분(원)', x.propUrban) + money(p + '.propEdu', '지방교육세(원)', x.propEdu) : ''}
+          ${x.propMode !== 'auto' ? money(p + '.propBase', '재산세 과세표준(원, 선택)', x.propBase, '고지서에 있으면 입력') : ''}
+        </div>
+        <div class="propcalc" data-prop="${i}">${propLine(hp, x)}</div>
+      </div>
+    </div>`;
+  });
+  h += `<div class="row-actions"><button type="button" class="btn" data-act="addHouse">주택 추가</button></div></div></section>`;
+
+  // 3. 세부담상한
+  const py = S.year - 1, rec = (S.records || {})[py] || {};
+  const persons = corp ? [['p0', '법인']] : S.spouse ? [['p0', S.names[0]], ['p1', S.names[1]]] : [['p0', S.names[0]]];
+  h += `<section class="panel"><h2>세부담상한 <small>${py}년 세액</small></h2><div class="body">
+    <div class="checks" style="margin-top:0">${chk('applyCap', `세부담상한 적용 (전년 대비 ${Math.round(P.capRate * 100)}%)`, S.applyCap, true)}</div>
+    ${S.applyCap ? `<p class="note" style="margin-bottom:10px">${py}년 기록이 있으면 자동으로 불러와요. 여기서 고치면 기록에도 반영돼요. 비워 두면 그 사람은 상한을 적용하지 않아요.</p>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>${py}년</th><th>재산세 본세(원)</th><th>종부세 본세(원)</th></tr></thead><tbody>
+    ${persons.map(([k, n]) => `<tr><td>${esc(n)}</td><td><input inputmode="numeric" data-rec="${py}.${k}.prop" value="${rec[k]?.prop ? won(rec[k].prop) : ''}" aria-label="${esc(n)} 재산세"></td><td><input inputmode="numeric" data-rec="${py}.${k}.comp" value="${rec[k]?.comp ? won(rec[k].comp) : ''}" aria-label="${esc(n)} 종부세"></td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="note">${rec.savedFrom ? `불러온 기록: ${esc(rec.savedFrom)}` : '저장된 기록 없음 — 직접 입력하거나, 전년도를 계산한 뒤 “기록으로 저장”하세요.'}</p>` : ''}
+  </div></section>`;
+
+  // 4. 고급
+  h += renderAdvanced(P);
+  // 5. 기록
+  h += renderRecords();
+  $('#form').innerHTML = h;
+}
+function propLine(hp, x){
+  if (x.excludeSum) return '합산배제 — 계산에서 제외돼요.';
+  return `${esc(hp.source)} · 본세 <b>${man(hp.main)}만</b> · 도시지역분 ${man(hp.urban)}만 · 지방교육세 ${man(hp.edu)}만 · 합계 ${man(hp.total)}만<br>재산세 과세표준 ${eok(hp.base)}억 (공시가 × ${Math.round(hp.fmv * 100)}% = ${eok(hp.baseStd)}억) · 공제용 표준세율 재산세 ${man(S.denomBasis === 'base' ? hp.stdOnBase : hp.stdOnGongsi)}만`;
+}
+
+const PARAM_UI = [
+  ['기본공제·과세기준', [
+    ['ded1hRes', '1세대1주택 거주 공제', 'eok'], ['ded1hNon', '1세대1주택 비거주 공제', 'eok'],
+    ['dedOtherFix', '그 외 공제(고정분)', 'eok'], ['dedOtherVar', '그 외 공제(× 거주주택 비중)', 'eok'],
+    ['thr1h', '과세기준: 1세대1주택 (0=없음)', 'eok'], ['thrOther', '과세기준: 그 외 (0=없음)', 'eok']]],
+  ['공정시장가액비율', [['fmvBase', '일반', 'pct'], ['fmvHeavy', '3주택+·조정지역 다주택', 'pct', true]]],
+  ['세율표 (과표 3·6·12·25·50·94억 구간, %)', [['rates12', '1·2주택', 'list'], ['rates3', '3주택 이상', 'list'], ['corp12', '법인 2주택 이하', 'pct', true], ['corp3', '법인 3주택 이상', 'pct']]],
+  ['세부담상한', [['capRate', '전년 대비 상한', 'pct', true], ['corpCap', '법인에도 상한 적용', 'bool']]],
+  ['1세대1주택 세액공제', [
+    ['creditMode', '공제 방식', 'mode'], ['ageRates', '연령 60·65·70세~', 'list'],
+    ['holdRates', '보유 5·10·15년~ (현행)', 'list'], ['holdRatesAlt', '보유 5·10·15년~ (개편 중간)', 'list'],
+    ['residRates', '거주 5·10·15년~', 'list'], ['creditTotalCap', '공제율 합산 한도', 'pct'],
+    ['creditAmtCap', '공제 금액 한도(만원, 0=없음)', 'man'], ['creditAmtScope', '금액 한도 적용 범위', 'scope', true]]],
+  ['재산세 공제 산식', [['propFmv1h', '재산세 FMV 1주택 3·6억·초과', 'list'], ['propFmvOther', '재산세 FMV 그 외', 'pct'], ['nongteuk', '농어촌특별세율', 'pct']]],
+];
+function currentParams(){ return Object.assign(JB.defaultParams(S.year), (S.overrides || {})[S.year] || {}); }
+function renderAdvanced(P){
+  const ov = (S.overrides || {})[S.year] || {};
+  const D = JB.defaultParams(S.year);
+  let h = `<details class="panel" id="advPanel" ${S._advOpen ? 'open' : ''}><summary>계산 기준 · ${esc(D.label)} 파라미터</summary><div class="body">
+    <p class="note" style="margin-top:0">연도별 기본값은 현행법·세제개편안(8.3. 발표) 기준이에요. 국회 심의로 바뀌면 여기서 고치세요. 바꾼 칸은 파란 글씨로 표시돼요.<span class="flag">확인 필요</span> 표시는 개편안 원문에서 해석이 갈리는 항목이에요.</p>
+    <div class="fields" style="margin:10px 0 4px">
+      ${sel('denomBasis', '재산세 공제 분모 기준', S.denomBasis, [['gongsi', '공시가 × 재산세 FMV'], ['base', '실제 재산세 과세표준']], '과표상한제로 실제 과표가 낮을 때 결과가 달라져요')}
+    </div>
+    <div class="checks">${chk('urban', '재산세 도시지역분 있음(추정 시 사용)', S.urban !== false)}</div>`;
+  PARAM_UI.forEach(([title, rows]) => {
+    h += `<h3 style="font-size:13.5px;margin:18px 0 8px">${title}</h3><div class="fields">`;
+    rows.forEach(([k, label, kind, flag]) => {
+      const changed = k in ov;
+      const style = changed ? ' style="color:var(--blue);font-weight:700"' : '';
+      const lab = `${label}${flag ? '<span class="flag">확인 필요</span>' : ''}`;
+      const v = P[k];
+      let input;
+      if (kind === 'eok') input = `<input type="number" step="0.01" class="num" data-p="${k}" data-pk="eok" value="${+(v / EOK).toFixed(4)}"${style}>`;
+      else if (kind === 'man') input = `<input type="number" step="1" class="num" data-p="${k}" data-pk="man" value="${Math.round(v / MAN)}"${style}>`;
+      else if (kind === 'pct') input = `<input type="number" step="0.1" class="num" data-p="${k}" data-pk="pct" value="${+(v * 100).toFixed(3)}"${style}>`;
+      else if (kind === 'list') input = `<input type="text" data-p="${k}" data-pk="list" value="${v.map(x => +(x * 100).toFixed(3)).join(', ')}"${style}>`;
+      else if (kind === 'bool') input = `<select data-p="${k}" data-pk="bool"${style}><option value="0" ${!v ? 'selected' : ''}>아니요</option><option value="1" ${v ? 'selected' : ''}>예</option></select>`;
+      else if (kind === 'mode') input = `<select data-p="${k}" data-pk="str"${style}>${[['hold', '연령 + 보유'], ['max', '연령 + max(거주, 보유)'], ['resid', '연령 + 거주']].map(([a, b]) => `<option value="${a}" ${v === a ? 'selected' : ''}>${b}</option>`).join('')}</select>`;
+      else if (kind === 'scope') input = `<select data-p="${k}" data-pk="str"${style}>${[['total', '세액공제 전체(연령 포함)'], ['residhold', '거주·보유공제분만']].map(([a, b]) => `<option value="${a}" ${v === a ? 'selected' : ''}>${b}</option>`).join('')}</select>`;
+      h += `<div class="f"><span class="lab">${lab}</span>${input}</div>`;
+    });
+    h += `</div>`;
+  });
+  h += `<div class="row-actions" style="margin-top:16px"><button type="button" class="btn ghost" data-act="resetParams">${S.year}년 기본값으로 되돌리기</button></div></div></details>`;
+  return h;
+}
+function renderRecords(){
+  const years = Object.keys(S.records || {}).sort();
+  let h = `<details class="panel" id="recPanel" ${S._recOpen ? 'open' : ''}><summary>연도별 세액 기록 · 백업</summary><div class="body">
+    <p class="note" style="margin-top:0">다음 해 세부담상한 계산에 쓰는 기록이에요. 실제 고지서 금액으로 고쳐 두면 가장 정확해요.</p>`;
+  if (years.length) {
+    h += `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>연도</th><th>본인 재산세</th><th>본인 종부세</th><th>배우자 재산세</th><th>배우자 종부세</th><th></th></tr></thead><tbody>`;
+    years.forEach(y => {
+      const r = S.records[y];
+      const cell = (k, f) => `<td><input inputmode="numeric" data-rec="${y}.${k}.${f}" value="${r[k]?.[f] ? won(r[k][f]) : ''}" aria-label="${y} ${k} ${f}"></td>`;
+      h += `<tr><td>${y}</td>${cell('p0', 'prop')}${cell('p0', 'comp')}${cell('p1', 'prop')}${cell('p1', 'comp')}<td><button type="button" class="btn ghost small" data-act="delRec" data-y="${y}">삭제</button></td></tr>`;
+    });
+    h += `</tbody></table></div>`;
+  } else h += `<p class="note">아직 저장된 기록이 없어요.</p>`;
+  h += `<div class="row-actions" style="margin-top:12px">
+    <input id="newRecYear" type="number" inputmode="numeric" value="${S.year - 1}" aria-label="추가할 연도" style="width:90px;min-height:40px;padding:6px 8px;border:1px solid var(--rule);border-radius:7px;background:var(--surface);text-align:right">
+    <button type="button" class="btn" data-act="addRec">연도 추가</button></div>
+    <div class="row-actions" style="margin-top:10px">
+    <button type="button" class="btn ghost" data-act="export">내보내기(JSON)</button>
+    <button type="button" class="btn ghost" data-act="import">파일 불러오기</button>
+    <button type="button" class="btn ghost" data-act="importText">붙여넣은 JSON 적용</button>
+    <button type="button" class="btn ghost" data-act="resetAll">모든 입력 초기화</button></div>
+    <textarea id="exportBox" placeholder="내보낸 JSON이 여기 표시돼요. 다른 기기에서 복사한 JSON을 붙여넣고 적용할 수도 있어요." style="width:100%;min-height:90px;margin-top:10px;font-size:12px;border:1px solid var(--rule);border-radius:7px;background:var(--surface);padding:8px"></textarea>
+    </div></details>`;
+  return h;
+}
+
+// ── 결과(고지서) ──
+function renderLedger(){
+  const R = JB.compute(S);
+  const P = R.P;
+  let h = `<div class="bill"><div class="bill-head"><div class="t">주택분 종합부동산세 계산 명세 · ${esc(P.label)}</div><div class="y">${R.year}${R.year === 2028 ? '년 이후' : '년'} 귀속</div></div>
+    <div class="due"><div class="lab">납부할 세액<small>종부세 + 농어촌특별세</small></div><div class="amt">${man(R.total)}<span>만원</span></div></div>
+    <dl class="kv" style="margin:0">
+      <div><dt>종합부동산세</dt><dd style="margin:0">${won(R.comp)}원</dd></div>
+      <div><dt>농어촌특별세 (${Math.round(P.nongteuk * 100)}%)</dt><dd style="margin:0">${won(R.nong)}원</dd></div>
+      <div><dt>재산세(입력·추정 합계)</dt><dd style="margin:0">${won(R.propTotal)}원</dd></div>
+      <div><dt><b>보유세 합계</b></dt><dd style="margin:0"><b>${man(R.total + R.propTotal)}만원</b></dd></div>
+    </dl>`;
+  if (R.alt) {
+    const diff = R.alt.total - R.total;
+    h += `<div class="compare">공동명의 특례 ${R.alt.election ? '신청' : '미신청'} 시 ${man(R.alt.total)}만원 → 지금 선택이 <b>${diff >= 0 ? man(diff) + '만원 유리' : man(-diff) + '만원 불리'}</b>해요.</div>`;
+  }
+  R.people.forEach(p => {
+    const inst = p.installment > 0 ? ` · 분납 가능 ${man(p.installment)}만` : '';
+    h += `<div class="person"><h3>${esc(p.name)}</h3><div class="cat">${esc(p.category || '')}${p.reason ? ' · ' + esc(p.reason) : ''}</div><ol class="steps">`;
+    p.steps.forEach(s => {
+      const neg = s.value < 0;
+      h += `<li><span class="lbl">${esc(s.label)}</span><span class="val">${s.value === 0 && (s.k === 'cap') ? '—' : (neg ? '−' : '') + (['sum','ded','base','thr'].includes(s.k) ? eok(Math.abs(s.value)) + '억' : man(Math.abs(s.value)) + '만')}</span><span class="why">${esc(s.note)}</span></li>`;
+    });
+    h += `<li class="final"><span class="lbl">결정세액</span><span class="val">${won(p.comp)}원</span><span class="why">농특세 ${won(p.nong)}원 포함 ${won(p.total)}원${inst}</span></li></ol></div>`;
+  });
+  // 연도 비교
+  const rows = JB.YEARS.map(y => { const r = JB.compute(Object.assign({}, S, {year: y}), y, {noCap: true, noAlt: true}); return [y, r]; });
+  h += `<div class="years"><h4>같은 입력으로 연도별 비교 <span style="font-weight:400;color:var(--muted)">(세부담상한 미적용)</span></h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>연도</th><th>종부세</th><th>농특세</th><th>합계</th></tr></thead><tbody>
+    ${rows.map(([y, r]) => `<tr${y === S.year ? ' style="font-weight:700"' : ''}><td>${y === 2028 ? '2028~' : y}</td><td>${man(r.comp)}만</td><td>${man(r.nong)}만</td><td>${man(r.total)}만</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  h += `<div class="bill-foot"><div class="row-actions" style="margin-bottom:14px"><button type="button" class="btn primary" data-act="saveRec">${R.year}년 결과를 기록으로 저장</button></div>
+    <h4>계산 전제와 한계</h4><ul class="warnlist">
+      <li>종부세 과세표준 = (공시가격 합계 − 공제) × 공정시장가액비율, 재산세 공제 = 재산세 본세 × (종부세 과표 × 재산세 FMV × 0.4%) ÷ 표준세율 재산세(재산세 본세 한도).</li>
+      <li>2027·2028 값은 정부안이에요. 국회 심의로 바뀔 수 있어요.</li>
+      <li>개편안 해석이 갈리는 항목(세부담상한 200% 시행시기, 조정지역 다주택 FMV 범위, 2027 법인세율, 거주주택 판정)은 고급 설정에서 바꿀 수 있어요.</li>
+      <li>세부담상한은 입력한 전년도 실제 세액으로 비교해요. 법정 산식은 직전연도 세액상당액을 다시 계산하므로 차이가 날 수 있어요.</li>
+      <li>과세표준·세액의 법정 단수처리, 감면(임대 등), 토지분 종부세는 반영하지 않아요. 실제 신고 전 세무사 검토가 필요해요.</li>
+    </ul></div></div>`;
+  $('#ledger').innerHTML = h;
+  $('#dockAmt').textContent = man(R.total) + '만원';
+  // 재산세 라인 갱신
+  R.hp.forEach((hp, i) => { const el = document.querySelector(`[data-prop="${i}"]`); if (el) el.innerHTML = propLine(hp, S.houses[i]); });
+}
+
+// ── 이벤트 ──
+let lastJoint = null;
+function refresh(full){
+  if (!full) { const j = JB.compute(S, null, {noAlt: true}).jointEligible; if (lastJoint !== null && j !== lastJoint) full = true; }
+  if (full) { renderYearSeg(); renderForm(); }
+  lastJoint = JB.compute(S, null, {noAlt: true}).jointEligible;
+  renderLedger(); save();
+}
+function handle(t){
+  if (t.dataset.k) {
+    const k = t.dataset.k, ty = t.dataset.t;
+    let v = ty === 'money' ? parseNum(t.value) : ty === 'num' ? (t.value === '' ? '' : +t.value) : ty === 'bool' ? t.checked : t.value;
+    if (k === 'spouse') v = v === '1';
+    setPath(S, k, v);
+    if (ty === 'money') { const hint = document.querySelector(`[data-hint="${k}"]`); if (hint) hint.textContent = korean(v); }
+    if (k.endsWith('.share0')) { const el = document.getElementById(k + '.sh'); if (el) el.textContent = `${S.names[1]} ${100 - (+v || 0)}%`; }
+    refresh(!!t.dataset.re || k === 'taxpayer' || k === 'spouse');
+  } else if (t.dataset.rec) {
+    const [y, pk, f] = t.dataset.rec.split('.');
+    S.records[y] = S.records[y] || {};
+    S.records[y][pk] = S.records[y][pk] || {};
+    S.records[y][pk][f] = parseNum(t.value);
+    if (!S.records[y].savedFrom) S.records[y].savedFrom = '직접 입력';
+    refresh(false);
+  } else if (t.dataset.p) {
+    const k = t.dataset.p, kind = t.dataset.pk;
+    let v;
+    if (kind === 'eok') v = (+t.value || 0) * EOK;
+    else if (kind === 'man') v = (+t.value || 0) * MAN;
+    else if (kind === 'pct') v = (+t.value || 0) / 100;
+    else if (kind === 'list') { v = t.value.split(/[,\s]+/).filter(Boolean).map(x => (+x || 0) / 100); const need = JB.defaultParams(S.year)[k].length; if (v.length !== need) return; }
+    else if (kind === 'bool') v = t.value === '1';
+    else v = t.value;
+    S.overrides[S.year] = S.overrides[S.year] || {};
+    S.overrides[S.year][k] = v;
+    t.style.color = 'var(--blue)'; t.style.fontWeight = '700';
+    refresh(false);
+  }
+}
+const isChoice = t => t.tagName === 'SELECT' || t.type === 'checkbox';
+document.addEventListener('input', e => { if (!isChoice(e.target)) handle(e.target); });
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (isChoice(t)) { handle(t); return; }
+  if (t.dataset.t === 'money' || t.dataset.rec) { const n = parseNum(t.value); t.value = n ? won(n) : ''; }
+});
+document.addEventListener('toggle', e => {
+  if (e.target.id === 'advPanel') { S._advOpen = e.target.open; save(); }
+  if (e.target.id === 'recPanel') { S._recOpen = e.target.open; save(); }
+}, true);
+let resetArmed = false;
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.year) { S.year = +b.dataset.year; refresh(true); return; }
+  const a = b.dataset.act; if (!a) return;
+  if (a === 'addHouse') { S.houses.push(newHouse(S.houses.length + 1)); refresh(true); }
+  else if (a === 'delHouse') { S.houses.splice(+b.dataset.i, 1); refresh(true); }
+  else if (a === 'resetParams') { delete S.overrides[S.year]; refresh(true); toast(`${S.year}년 기본값으로 되돌렸어요`); }
+  else if (a === 'saveRec') {
+    const R = JB.compute(S);
+    const y = R.year, existed = !!S.records[y];
+    const rec = {savedFrom: `${new Date().toLocaleDateString('ko-KR')} 계산 결과`};
+    const keys = S.taxpayer === 'corp' ? ['p0'] : S.spouse ? ['p0', 'p1'] : ['p0'];
+    keys.forEach(k => rec[k] = {prop: 0, comp: 0});
+    R.people.forEach(p => { rec[p.key] = {prop: Math.round(p.propPaid), comp: p.comp}; });
+    S.records[y] = rec; S._recOpen = true;
+    refresh(true); toast(existed ? `${y}년 기록을 덮어썼어요` : `${y}년 기록으로 저장했어요`);
+  }
+  else if (a === 'delRec') { delete S.records[b.dataset.y]; refresh(true); }
+  else if (a === 'addRec') {
+    const y = +$('#newRecYear').value;
+    if (!(y >= 2000 && y <= 2100)) { toast('연도를 네 자리로 입력하세요'); return; }
+    S.records[y] = S.records[y] || {savedFrom: '직접 입력'}; S._recOpen = true; refresh(true);
+  }
+  else if (a === 'export') {
+    const blob = JSON.stringify(S, null, 2);
+    const box = $('#exportBox'); box.value = blob; box.select();
+    if (navigator.clipboard) navigator.clipboard.writeText(blob).then(() => toast('JSON을 클립보드에 복사했어요'), () => toast('아래 칸의 JSON을 복사하세요'));
+    else toast('아래 칸의 JSON을 복사하세요');
+  }
+  else if (a === 'import') { $('#importFile').click(); }
+  else if (a === 'importText') {
+    try { S = Object.assign(defaults(), JSON.parse($('#exportBox').value)); refresh(true); toast('불러왔어요'); }
+    catch (err) { toast('JSON 형식이 아니에요'); }
+  }
+  else if (a === 'resetAll') {
+    if (!resetArmed) { resetArmed = true; b.textContent = '한 번 더 누르면 초기화'; setTimeout(() => { resetArmed = false; if (b.isConnected) b.textContent = '모든 입력 초기화'; }, 4000); return; }
+    resetArmed = false; S = defaults(); refresh(true); toast('초기화했어요');
+  }
+});
+$('#importFile').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { S = Object.assign(defaults(), JSON.parse(await f.text())); refresh(true); toast('불러왔어요'); }
+  catch (err) { toast('JSON 형식이 아니에요'); }
+  e.target.value = '';
+});
+
+load(); refresh(true);
+})();
+</script>
+</body>
+</html>
