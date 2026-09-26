@@ -249,6 +249,7 @@ ol.steps li.final .lbl,ol.steps li.final .val{font-weight:700}
       source = '미입력 — 표준 산식 추정';
     }
     return { fmv, baseStd, base, main, urban: urb, edu, total: main + urb + edu, source,
+             resource: +h.propResource || 0,
              stdOnGongsi: progressive(baseStd, P_BR, P_STD), stdOnBase: progressive(base, P_BR, P_STD) };
   }
 
@@ -402,6 +403,7 @@ ol.steps li.final .lbl,ol.steps li.final .val{font-weight:700}
       year, P, household1h, jointEligible, useElection, hp, people,
       comp: sum(people.map(p => p.comp)), nong: sum(people.map(p => p.nong)),
       propTotal: sum(hp.map((x, i) => houses[i].excludeSum ? 0 : x.total)),
+      resTotal: sum(hp.map(x => x.resource)),
     };
     res.total = res.comp + res.nong;
     if (jointEligible && !opts.noAlt) {
@@ -429,7 +431,7 @@ const $ = s => document.querySelector(s);
 let uid = 1;
 const newHouse = n => ({id: 'h' + (uid++), name: '주택 ' + n, gongsi: 15 * EOK, share0: 50, adjusted: false, resid: true,
   acq: '2016-06-01', residYears: 10, excludeCount: false, excludeSum: false,
-  propMode: 'auto', propTotal: 0, propMain: 0, propUrban: 0, propEdu: 0, propBase: 0});
+  propMode: 'auto', propResource: 0, propTotal: 0, propMain: 0, propUrban: 0, propEdu: 0, propBase: 0});
 const defaults = () => ({year: 2026, taxpayer: 'indiv', spouse: true, election: false, electionHolder: 'p0',
   names: ['본인', '배우자'], births: ['', ''], houses: [newHouse(1)], urban: true, applyCap: true,
   denomBasis: 'gongsi', overrides: {}, records: {}});
@@ -519,12 +521,13 @@ function renderForm(){
         ${chk(p + '.excludeCount', '주택 수 제외(일시적 2주택·상속 등)', x.excludeCount, true)}
         ${chk(p + '.excludeSum', '합산배제(등록임대 등)', x.excludeSum, true)}
       </div>
-      <div class="sub"><span class="lab">이 주택 재산세 (소유자 전원 합계, 7월+9월)</span>
+      <div class="sub"><span class="lab">이 주택 재산세 (소유자 전원 합계, 7월+9월 고지서)</span>
         <div class="fields">
           ${sel(p + '.propMode', '입력 방식', x.propMode, [['auto', '입력 안 함(추정)'], ['total', '고지서 총액'], ['split', '세목별']])}
-          ${x.propMode === 'total' ? money(p + '.propTotal', '재산세 총액(원)', x.propTotal, '본세+도시지역분+지방교육세') : ''}
+          ${x.propMode === 'total' ? money(p + '.propTotal', '재산세 총액(원)', x.propTotal, '본세+도시지역분+지방교육세. 지역자원시설세는 빼고 입력') : ''}
           ${x.propMode === 'split' ? money(p + '.propMain', '재산세 본세(원)', x.propMain) + money(p + '.propUrban', '도시지역분(원)', x.propUrban) + money(p + '.propEdu', '지방교육세(원)', x.propEdu) : ''}
           ${x.propMode !== 'auto' ? money(p + '.propBase', '재산세 과세표준(원, 선택)', x.propBase, '고지서에 있으면 입력') : ''}
+          ${money(p + '.propResource', '지역자원시설세(원, 선택)', x.propResource, '보유세 합계에만 더하고 종부세 계산에는 쓰지 않아요')}
         </div>
         <div class="propcalc" data-prop="${i}">${propLine(hp, x)}</div>
       </div>
@@ -552,7 +555,7 @@ function renderForm(){
 }
 function propLine(hp, x){
   if (x.excludeSum) return '합산배제 — 계산에서 제외돼요.';
-  return `${esc(hp.source)} · 본세 <b>${man(hp.main)}만</b> · 도시지역분 ${man(hp.urban)}만 · 지방교육세 ${man(hp.edu)}만 · 합계 ${man(hp.total)}만<br>재산세 과세표준 ${eok(hp.base)}억 (공시가 × ${Math.round(hp.fmv * 100)}% = ${eok(hp.baseStd)}억) · 공제용 표준세율 재산세 ${man(S.denomBasis === 'base' ? hp.stdOnBase : hp.stdOnGongsi)}만`;
+  return `${esc(hp.source)} · 본세 <b>${man(hp.main)}만</b> · 도시지역분 ${man(hp.urban)}만 · 지방교육세 ${man(hp.edu)}만 · 합계 ${man(hp.total)}만${hp.resource ? ` · 지역자원시설세 ${man(hp.resource)}만(별도)` : ''}<br>재산세 과세표준 ${eok(hp.base)}억 (공시가 × ${Math.round(hp.fmv * 100)}% = ${eok(hp.baseStd)}억) · 공제용 표준세율 재산세 ${man(S.denomBasis === 'base' ? hp.stdOnBase : hp.stdOnGongsi)}만`;
 }
 
 const PARAM_UI = [
@@ -638,7 +641,8 @@ function renderLedger(){
       <div><dt>종합부동산세</dt><dd style="margin:0">${won(R.comp)}원</dd></div>
       <div><dt>농어촌특별세 (${Math.round(P.nongteuk * 100)}%)</dt><dd style="margin:0">${won(R.nong)}원</dd></div>
       <div><dt>재산세(입력·추정 합계)</dt><dd style="margin:0">${won(R.propTotal)}원</dd></div>
-      <div><dt><b>보유세 합계</b></dt><dd style="margin:0"><b>${man(R.total + R.propTotal)}만원</b></dd></div>
+      <div><dt>지역자원시설세(입력)</dt><dd style="margin:0">${R.resTotal ? won(R.resTotal) + '원' : '미입력'}</dd></div>
+      <div><dt><b>보유세 합계</b></dt><dd style="margin:0"><b>${man(R.total + R.propTotal + R.resTotal)}만원</b></dd></div>
     </dl>`;
   if (R.alt) {
     const diff = R.alt.total - R.total;
